@@ -1,21 +1,80 @@
 <!doctype html>
-<html>
+<html lang="th">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Admin</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>แอดมิน | จัดการระบบ</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<h2>แอดมิน</h2>
+  <div class="topbar">
+    <div class="inner">
+      <div class="brand">🛠️ <span>แอดมิน | จัดการระบบ</span></div>
+      <div class="badge">Admin</div>
+    </div>
+  </div>
 
-<button onclick="clearAll()">ล้างข้อมูล</button>
+  <div class="container">
+    <section class="card">
+      <h3>เครื่องมือแอดมิน</h3>
+      <p class="sub">ใช้ตอนทดสอบ/รีเซ็ตข้อมูล</p>
 
-<script>
-function clearAll(){
-localStorage.clear();
-alert("ล้างข้อมูลแล้ว");
-}
-</script>
+      <div class="row">
+        <button class="btn danger" id="resetBtn">ล้างออเดอร์ทั้งหมด</button>
+      </div>
 
+      <div class="kpi">
+        <span class="muted">จำนวนออเดอร์ในระบบ</span>
+        <strong id="countTxt">0</strong>
+      </div>
+
+      <div id="preview" class="list" style="margin-top:10px"></div>
+    </section>
+  </div>
+
+  <script src="data.js"></script>
+  <script>
+    const el = (id)=>document.getElementById(id);
+
+    function render(){
+      const orders = getOrders().sort((a,b)=>b.id-a.id);
+      el("countTxt").textContent = String(orders.length);
+
+      const box = el("preview");
+      box.innerHTML = "";
+      if(orders.length===0){
+        box.innerHTML = `<div class="muted">ไม่มีข้อมูล</div>`;
+        return;
+      }
+
+      orders.slice(0,5).forEach(o=>{
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `
+          <div>
+            <div class="title">#${o.id} • ${o.status}</div>
+            <div class="meta">รับเวลา: ${formatDT(o.pickup)} • ยอด: ${money(o.total)}</div>
+          </div>
+          <div class="actions">
+            <span class="pill">ล่าสุด</span>
+          </div>
+        `;
+        box.appendChild(div);
+      });
+    }
+
+    function reset(){
+      if(!confirm("ล้างออเดอร์ทั้งหมดจริงไหม?")) return;
+      saveOrders([]);
+      render();
+      alert("ล้างออเดอร์แล้ว");
+    }
+
+    document.addEventListener("DOMContentLoaded", ()=>{
+      el("resetBtn").addEventListener("click", reset);
+      render();
+    });
+  </script>
 </body>
 </html>

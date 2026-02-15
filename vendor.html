@@ -1,46 +1,105 @@
 <!doctype html>
-<html>
+<html lang="th">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ร้านอาหาร</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ร้านอาหาร | ออเดอร์</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<h2>ออเดอร์ร้าน</h2>
+  <div class="topbar">
+    <div class="inner">
+      <div class="brand">🧑‍🍳 <span>ร้านอาหาร | จัดการออเดอร์</span></div>
+      <div class="badge">Order Inbox</div>
+    </div>
+  </div>
 
-<div id="orders"></div>
+  <div class="container">
+    <section class="card">
+      <h3>รายการออเดอร์</h3>
+      <p class="sub">อัปเดตสถานะให้นักเรียนเห็นแบบเรียลไทม์ (ในเครื่องเดียวกัน)</p>
 
-<script src="data.js"></script>
-<script>
+      <div class="row">
+        <button class="btn small ghost" id="refreshBtn">รีเฟรช</button>
+        <button class="btn small danger" id="clearCanceledBtn">ซ่อนออเดอร์ยกเลิก</button>
+      </div>
 
-function render(){
-let orders=getOrders();
-ordersDiv.innerHTML="";
+      <div id="ordersList" class="list" style="margin-top:10px"></div>
+    </section>
+  </div>
 
-orders.forEach(o=>{
-ordersDiv.innerHTML+=`
-<div>
-ออเดอร์ ${o.id}<br>
-สถานะ: ${o.status}
-<button onclick="ready(${o.id})">พร้อมรับ</button>
-</div>`;
-});
-}
+  <script src="data.js"></script>
+  <script>
+    const el = (id)=>document.getElementById(id);
 
-function ready(id){
-let orders=getOrders();
-let o=orders.find(x=>x.id==id);
-o.status="พร้อมรับ";
-saveOrders(orders);
-render();
-}
+    function render(){
+      const box = el("ordersList");
+      const orders = getOrders().sort((a,b)=>b.id-a.id);
 
-render();
+      box.innerHTML = "";
+      if(orders.length===0){
+        box.innerHTML = `<div class="muted">ยังไม่มีออเดอร์</div>`;
+        return;
+      }
 
-</script>
+      orders.forEach(o=>{
+        const itemsTxt = o.items.map(i=>`${i.name}×${i.qty}`).join(", ");
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `
+          <div>
+            <div class="title">ออเดอร์ #${o.id}</div>
+            <div class="meta">รับเวลา: ${formatDT(o.pickup)} • ยอด: <b>${money(o.total)}</b></div>
+            <div class="meta">สถานะ: <b>${o.status}</b></div>
+            <div class="meta">${itemsTxt}</div>
+            ${o.note ? `<div class="meta">หมายเหตุ: ${o.note}</div>` : ``}
+          </div>
+          <div class="actions">
+            <button class="warn" data-set="กำลังทำ" data-id="${o.id}">กำลังทำ</button>
+            <button class="ok" data-set="พร้อมรับ" data-id="${o.id}">พร้อมรับ</button>
+            <button class="ok" data-set="รับแล้ว" data-id="${o.id}">รับแล้ว</button>
+            <button class="danger" data-set="ยกเลิก" data-id="${o.id}">ยกเลิก</button>
+          </div>
+        `;
+        box.appendChild(div);
+      });
 
-<div id="ordersDiv"></div>
+      box.querySelectorAll("button[data-set]").forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          const id = Number(btn.dataset.id);
+          const st = btn.dataset.set;
+          updateStatus(id, st);
+        });
+      });
+    }
 
+    function updateStatus(id, status){
+      const orders = getOrders();
+      const o = orders.find(x=>Number(x.id)===Number(id));
+      if(!o) return;
+
+      // กติกานิดนึง: ถ้ายกเลิกแล้วไม่ควรกลับได้ (กันมั่ว)
+      if(o.status === STATUS.CANCEL && status !== STATUS.CANCEL) return;
+
+      o.status = status;
+      saveOrders(orders);
+      render();
+    }
+
+    function hideCanceled(){
+      const orders = getOrders().filter(o=>o.status !== STATUS.CANCEL);
+      saveOrders(orders);
+      render();
+    }
+
+    document.addEventListener("DOMContentLoaded", ()=>{
+      el("refreshBtn").addEventListener("click", render);
+      el("clearCanceledBtn").addEventListener("click", hideCanceled);
+      render();
+      // auto refresh ทุก 3 วิ (กันลืมกดรีเฟรช)
+      setInterval(render, 3000);
+    });
+  </script>
 </body>
 </html>

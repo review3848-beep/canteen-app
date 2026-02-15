@@ -1,69 +1,210 @@
 <!doctype html>
-<html>
+<html lang="th">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ลูกค้า - สั่งอาหาร</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ลูกค้า | สั่งจองอาหาร</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<h2>สั่งอาหาร</h2>
+  <div class="topbar">
+    <div class="inner">
+      <div class="brand">🍜 <span>ลูกค้า | สั่งจองอาหาร</span></div>
+      <div class="badge">Pickup Only</div>
+    </div>
+  </div>
 
-<div id="menu"></div>
+  <div class="container">
+    <div class="grid">
+      <section class="card">
+        <h3>เมนูวันนี้</h3>
+        <p class="sub">กด “เพิ่ม” เพื่อใส่ตะกร้า</p>
+        <div id="menuList" class="list"></div>
+      </section>
 
-<h3>ตะกร้า</h3>
-<div id="cart"></div>
+      <section class="card">
+        <h3>ตะกร้า</h3>
+        <p class="sub">เลือกเวลารับ แล้วกดสั่ง</p>
+        <div id="cartList" class="list"></div>
 
-<input type="datetime-local" id="pickup">
-<button onclick="order()">สั่งอาหาร</button>
+        <div class="kpi">
+          <span class="muted">รวมทั้งสิ้น</span>
+          <strong id="totalTxt">฿0</strong>
+        </div>
 
-<script src="data.js"></script>
-<script>
+        <div class="row" style="margin-top:10px">
+          <div class="grow">
+            <input id="pickup" type="datetime-local">
+          </div>
+        </div>
 
-let cart=[];
+        <div class="row">
+          <div class="grow">
+            <textarea id="note" placeholder="หมายเหตุ เช่น ไม่เผ็ด / ไม่ผัก"></textarea>
+          </div>
+        </div>
 
-function renderMenu(){
-menu.innerHTML="";
-MENU.forEach(m=>{
-menu.innerHTML+=`
-<div>
-${m.name} ฿${m.price}
-<button onclick="add(${m.id})">เพิ่ม</button>
-</div>`;
-});
-}
+        <button class="btn primary" id="orderBtn">สั่งจองอาหาร</button>
+        <div id="toast" class="toast" style="display:none"></div>
+      </section>
+    </div>
 
-function add(id){
-let m=MENU.find(x=>x.id==id);
-cart.push(m);
-renderCart();
-}
+    <section class="card" style="margin-top:14px">
+      <h3>ติดตามสถานะล่าสุด</h3>
+      <p class="sub">ออเดอร์ล่าสุดของเครื่องนี้</p>
+      <div id="lastOrderBox" class="list"></div>
+    </section>
+  </div>
 
-function renderCart(){
-cartDiv.innerHTML="";
-cart.forEach(c=>{
-cartDiv.innerHTML+=`<div>${c.name}</div>`;
-});
-}
+  <script src="data.js"></script>
+  <script>
+    let cart = []; // [{id,name,price,qty}]
 
-function order(){
-let orders=getOrders();
-orders.push({
-id:Date.now(),
-items:cart,
-status:"รอทำ"
-});
-saveOrders(orders);
-cart=[];
-renderCart();
-alert("สั่งสำเร็จ");
-}
+    const el = (id)=>document.getElementById(id);
 
-renderMenu();
+    function showToast(msg, type="ok"){
+      const t = el("toast");
+      t.style.display = "block";
+      t.className = "toast" + (type==="warn" ? " warn" : type==="danger" ? " danger" : "");
+      t.textContent = msg;
+      setTimeout(()=>{ t.style.display="none"; }, 2500);
+    }
 
-</script>
+    function renderMenu(){
+      const box = el("menuList");
+      box.innerHTML = "";
+      MENU.forEach(m=>{
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `
+          <div>
+            <div class="title">${m.name}</div>
+            <div class="meta">${money(m.price)}</div>
+          </div>
+          <div class="actions">
+            <button class="ok" data-add="${m.id}">เพิ่ม</button>
+          </div>
+        `;
+        box.appendChild(div);
+      });
 
-<div id="cartDiv"></div>
+      box.querySelectorAll("button[data-add]").forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          const id = Number(btn.dataset.add);
+          const m = MENU.find(x=>x.id===id);
+          const found = cart.find(x=>x.id===id);
+          if(found) found.qty++;
+          else cart.push({id:m.id, name:m.name, price:m.price, qty:1});
+          renderCart();
+        });
+      });
+    }
 
+    function renderCart(){
+      const box = el("cartList");
+      box.innerHTML = "";
+      let total = 0;
+
+      if(cart.length===0){
+        box.innerHTML = `<div class="muted">ยังไม่มีรายการในตะกร้า</div>`;
+        el("totalTxt").textContent = "฿0";
+        return;
+      }
+
+      cart.forEach((c, idx)=>{
+        total += c.price * c.qty;
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `
+          <div>
+            <div class="title">${c.name}</div>
+            <div class="meta">${money(c.price)} × ${c.qty} = <b>${money(c.price*c.qty)}</b></div>
+          </div>
+          <div class="actions">
+            <button data-act="dec" data-idx="${idx}">-</button>
+            <button class="ok" data-act="inc" data-idx="${idx}">+</button>
+            <button class="danger" data-act="del" data-idx="${idx}">ลบ</button>
+          </div>
+        `;
+        box.appendChild(div);
+      });
+
+      el("totalTxt").textContent = money(total);
+
+      box.querySelectorAll("button[data-act]").forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          const idx = Number(btn.dataset.idx);
+          const act = btn.dataset.act;
+          if(act==="inc") cart[idx].qty++;
+          if(act==="dec") cart[idx].qty = Math.max(1, cart[idx].qty-1);
+          if(act==="del") cart.splice(idx,1);
+          renderCart();
+        });
+      });
+    }
+
+    function renderLastOrder(){
+      const box = el("lastOrderBox");
+      const orders = getOrders().sort((a,b)=>b.id-a.id);
+      const last = orders[0];
+
+      box.innerHTML = "";
+      if(!last){
+        box.innerHTML = `<div class="muted">ยังไม่มีออเดอร์</div>`;
+        return;
+      }
+
+      const itemsTxt = last.items.map(i=>`${i.name}×${i.qty}`).join(", ");
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div>
+          <div class="title">ออเดอร์ #${last.id}</div>
+          <div class="meta">รับเวลา: ${formatDT(last.pickup)} • สถานะ: <b>${last.status}</b></div>
+          <div class="meta">${itemsTxt}</div>
+        </div>
+        <div class="actions">
+          <span class="pill">${money(last.total)}</span>
+        </div>
+      `;
+      box.appendChild(div);
+    }
+
+    function createOrder(){
+      if(cart.length===0) return showToast("ตะกร้าว่าง", "warn");
+      const pickup = el("pickup").value;
+      if(!pickup) return showToast("กรุณาเลือกเวลารับอาหาร", "warn");
+
+      let total = 0;
+      cart.forEach(c=> total += c.price*c.qty);
+
+      const orders = getOrders();
+      const order = {
+        id: Date.now(),
+        items: cart.map(c=>({id:c.id, name:c.name, price:c.price, qty:c.qty})),
+        pickup,
+        note: el("note").value || "",
+        status: STATUS.PENDING,
+        total,
+        createdAt: new Date().toISOString()
+      };
+      orders.push(order);
+      saveOrders(orders);
+
+      cart = [];
+      el("note").value = "";
+      renderCart();
+      renderLastOrder();
+      showToast("สั่งจองสำเร็จ ✅ ไปดูที่หน้าร้านอาหารได้เลย");
+    }
+
+    document.addEventListener("DOMContentLoaded", ()=>{
+      renderMenu();
+      renderCart();
+      renderLastOrder();
+      el("orderBtn").addEventListener("click", createOrder);
+    });
+  </script>
 </body>
 </html>
