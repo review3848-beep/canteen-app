@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ร้านอาหาร</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h2>ออเดอร์ร้าน</h2>
+
+<div id="orders"></div>
+
+<script src="data.js"></script>
+<script>
+
+function render(){
+let orders=getOrders();
+ordersDiv.innerHTML="";
+
+orders.forEach(o=>{
+ordersDiv.innerHTML+=`
+<div>
+ออเดอร์ ${o.id}<br>
+สถานะ: ${o.status}
+<button onclick="ready(${o.id})">พร้อมรับ</button>
+</div>`;
+});
+}
+
+function ready(id){
+let orders=getOrders();
+let o=orders.find(x=>x.id==id);
+o.status="พร้อมรับ";
+saveOrders(orders);
+render();
+}
+
+render();
+
+</script>
+
+<div id="ordersDiv"></div>
+
+</body>
+</html>

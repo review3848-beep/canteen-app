@@ -1,0 +1,69 @@
+<!doctype html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ลูกค้า - สั่งอาหาร</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h2>สั่งอาหาร</h2>
+
+<div id="menu"></div>
+
+<h3>ตะกร้า</h3>
+<div id="cart"></div>
+
+<input type="datetime-local" id="pickup">
+<button onclick="order()">สั่งอาหาร</button>
+
+<script src="data.js"></script>
+<script>
+
+let cart=[];
+
+function renderMenu(){
+menu.innerHTML="";
+MENU.forEach(m=>{
+menu.innerHTML+=`
+<div>
+${m.name} ฿${m.price}
+<button onclick="add(${m.id})">เพิ่ม</button>
+</div>`;
+});
+}
+
+function add(id){
+let m=MENU.find(x=>x.id==id);
+cart.push(m);
+renderCart();
+}
+
+function renderCart(){
+cartDiv.innerHTML="";
+cart.forEach(c=>{
+cartDiv.innerHTML+=`<div>${c.name}</div>`;
+});
+}
+
+function order(){
+let orders=getOrders();
+orders.push({
+id:Date.now(),
+items:cart,
+status:"รอทำ"
+});
+saveOrders(orders);
+cart=[];
+renderCart();
+alert("สั่งสำเร็จ");
+}
+
+renderMenu();
+
+</script>
+
+<div id="cartDiv"></div>
+
+</body>
+</html>
